@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniNota</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="contenedor">
+        <h1>Calculadora de Nota Final</h1>
+        <p>Ingresa las notas de los primeros tres cortes (cada uno vale el 20%) para calcular la nota que necesitas en el examen final (que vale el 40%).</p>
+        
+        <form id="notaForm">
+            <label for="corte1">Nota del Primer Corte (20%):</label>
+            <input type="number" id="corte1" step="0.01" min="0" max="5" required>
+
+            <label for="corte2">Nota del Segundo Corte (20%):</label>
+            <input type="number" id="corte2" step="0.01" min="0" max="5" required>
+
+            <label for="corte3">Nota del Tercer Corte (20%):</label>
+            <input type="number" id="corte3" step="0.01" min="0" max="5" required>
+
+            <button type="submit">Calcular Nota Necesaria</button>
+        </form>
+
+        <div id="resultado"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
