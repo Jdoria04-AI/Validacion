@@ -243,6 +243,6 @@ input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: #
   .metrics-grid { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   h1 { font-size: 24px; }
   .result-value { font-size: 36px; }
-  .app { padding-bottom: 1rem; }
+  .app { padding-bottom: 1rem; width: 85%; margin: 0 auto; }
   .glass-panel { border-radius: 16px; }
 }
