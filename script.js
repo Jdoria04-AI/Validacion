@@ -38,11 +38,11 @@ function renderBars(containerId, c1, c2, c3, needed) {
   const el = document.getElementById(containerId);
   el.innerHTML = bars.map(b => {
     const pct = (b.val / 5 * 100).toFixed(1);
-    let color = '#2d6a4f';
+    let color = '#34d399'; // Neón green default
     if (b.isResult) {
-      if (b.overflow) color = '#991b1b';
-      else if (b.passed) color = '#2d6a4f';
-      else color = '#1e40af';
+      if (b.overflow) color = '#f87171';
+      else if (b.passed) color = '#34d399';
+      else color = '#60a5fa';
     }
     const displayVal = b.isResult && b.overflow ? '>5' : b.isResult && b.passed ? '—' : b.val.toFixed(1);
     return `
