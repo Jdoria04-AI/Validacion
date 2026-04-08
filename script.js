@@ -1,17 +1,3 @@
-// ===== PWA SERVICE WORKER (TEMPORARY DEV MODE: UNREGISTER & CLEAR) =====
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    for (let registration of registrations) {
-      registration.unregister();
-    }
-  });
-  if (window.caches) {
-    caches.keys().then(keys => {
-      keys.forEach(key => caches.delete(key));
-    });
-  }
-}
-
 // ===== STATE =====
 // Migración inteligente: Si hay strings antiguos, los converimos a objetos con semestre 1 y 3 créditos.
 let rawSubjects = JSON.parse(localStorage.getItem('uninota-subjects') || '[]');
