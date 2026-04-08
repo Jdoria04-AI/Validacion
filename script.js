@@ -1,8 +1,15 @@
-// ===== PWA SERVICE WORKER =====
+// ===== PWA SERVICE WORKER (TEMPORARY DEV MODE: UNREGISTER & CLEAR) =====
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW fail: ', err));
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    for (let registration of registrations) {
+      registration.unregister();
+    }
   });
+  if (window.caches) {
+    caches.keys().then(keys => {
+      keys.forEach(key => caches.delete(key));
+    });
+  }
 }
 
 // ===== STATE =====
