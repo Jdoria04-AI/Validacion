@@ -11,7 +11,32 @@
   --font: 'Inter', sans-serif; --font-mono: 'DM Mono', monospace;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.2); --shadow-md: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
-body { font-family: var(--font); background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; position: relative; overflow-x: hidden; padding-top: 3rem; }
+body { font-family: var(--font); background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; position: relative; overflow-x: hidden; padding-top: 3rem; transition: background-color 0.3s ease, color 0.3s ease; }
+
+/* ===== LIGHT THEME ===== */
+body.light-theme {
+  --bg-dark: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-surface: rgba(255, 255, 255, 0.6);
+}
+body.light-theme input, body.light-theme select { color: var(--text-main); border: 1px solid rgba(0,0,0,0.15); }
+body.light-theme select option { background: white; color: #0f172a; }
+body.light-theme .result-card { background: rgba(255, 255, 255, 0.5); }
+body.light-theme .cut-box { background: rgba(255, 255, 255, 0.5); }
+body.light-theme .bar-track { background: rgba(0, 0, 0, 0.08); }
+body.light-theme .pga-card { background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(236, 72, 153, 0.1)); }
+body.light-theme .bar-num, body.light-theme .sim-val, body.light-theme .pga-value { color: var(--text-main); }
+body.light-theme .pga-value { text-shadow: none; }
+body.light-theme .btn-icon { color: var(--text-main); border-color: rgba(0,0,0,0.15); }
+body.light-theme .hist-subject { color: var(--text-main); }
+body.light-theme .modal { background: rgba(255, 255, 255, 0.95); }
+body.light-theme .modal-title { color: var(--text-main); }
+body.light-theme .btn-secondary { color: var(--text-main); border-color: rgba(0,0,0,0.2); }
+body.light-theme .btn-secondary:hover { background: rgba(0,0,0,0.05); }
 
 /* Fondos animados */
 .background-shapes { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; overflow: hidden; z-index: -1; }
