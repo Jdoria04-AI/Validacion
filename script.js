@@ -1,16 +1,5 @@
 // ===== STATE =====
-// Migración inteligente: Si hay strings antiguos, los converimos a objetos con semestre 1 y 3 créditos.
-let rawSubjects = JSON.parse(localStorage.getItem('uninota-subjects') || '[]');
-if (rawSubjects.length === 0) {
-  rawSubjects = [
-    { name: "Matemáticas", semester: 1, credits: 3 },
-    { name: "Física", semester: 1, credits: 3 }
-  ];
-} else if (typeof rawSubjects[0] === 'string') {
-  rawSubjects = rawSubjects.map(name => ({ name, semester: 1, credits: 3 }));
-}
-let subjects = rawSubjects;
-let history  = JSON.parse(localStorage.getItem('uninota-history')  || '[]');
+let history = JSON.parse(localStorage.getItem('uninota-history') || '[]');
 
 let currentCuts = [
   { id: 1, weight: 20 },
@@ -21,16 +10,28 @@ let nextCutId = 4;
 
 // ===== SAVE =====
 function save() {
-  localStorage.setItem('uninota-subjects', JSON.stringify(subjects));
-  localStorage.setItem('uninota-history',  JSON.stringify(history));
+  localStorage.setItem('uninota-history', JSON.stringify(history));
 }
 
-// ===== SUBJECTS =====
-function renderSubjects() {
-  const sel = document.getElementById('subject-select');
-  const cur = sel.value;
-  sel.innerHTML = subjects.map(s => `<option value="${s.name}">${s.name} (Semestre ${s.semester})</option>`).join('');
-  if (cur && subjects.some(s => s.name === cur)) sel.value = cur;
+// ===== AUTOCOMPLETE =====
+function updateSubjectSuggestions() {
+  const dl = document.getElementById('subject-suggestions');
+  if(!dl) return;
+  const uniqueSubjects = {};
+  history.forEach(h => { if (!uniqueSubjects[h.subject]) uniqueSubjects[h.subject] = h; });
+  dl.innerHTML = Object.values(uniqueSubjects).map(h => `<option value="${h.subject}">`).join('');
+}
+
+const inpSubject = document.getElementById('calc-subject');
+if(inpSubject) {
+  inpSubject.addEventListener('change', (e) => {
+    const val = e.target.value.trim();
+    const found = history.find(h => h.subject === val);
+    if(found) {
+      document.getElementById('calc-semester').value = found.semester;
+      document.getElementById('calc-credits').value = found.credits;
+    }
+  });
 }
 
 // ===== TABS =====
@@ -41,6 +42,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'history') updatePGA();
+    if (tab.dataset.tab === 'pga') initPGASimulator();
   });
 });
 
@@ -65,7 +67,7 @@ document.querySelectorAll('.udec-header').forEach(btn => {
 function renderDynamicCuts() {
   const cont = document.getElementById('dynamic-cuts-container');
   const simCont = document.getElementById('sim-sliders-container');
-  
+
   // Render Calcular
   cont.innerHTML = currentCuts.map((cut, idx) => `
     <div class="cut-box" data-id="${cut.id}">
@@ -102,7 +104,7 @@ function addCut() {
   renderDynamicCuts();
 }
 
-window.removeCut = function(id) {
+window.removeCut = function (id) {
   currentCuts = currentCuts.filter(c => c.id !== id);
   renderDynamicCuts();
 };
@@ -114,7 +116,7 @@ function getCutsData() {
   const nodes = document.querySelectorAll('.cut-box');
   let sumWeights = 0, acc = 0;
   const cuts = [];
-  
+
   nodes.forEach(n => {
     const val = parseFloat(n.querySelector('.cut-val').value) || 0;
     const w = parseFloat(n.querySelector('.cut-weight').value) || 0;
@@ -124,7 +126,7 @@ function getCutsData() {
   });
 
   document.getElementById('alerta-pesos').classList.toggle('hidden', sumWeights > 0 && sumWeights < 100);
-  
+
   return { cuts, sumWeights, acc, leftoverW: (100 - sumWeights) / 100 };
 }
 
@@ -160,6 +162,7 @@ function getUdeCData() {
   };
 }
 
+// ===== CORE CALCULATION =====
 function calcMain(saveToHistory = false) {
   const data = evalMode === 'free' ? getCutsData() : getUdeCData();
   const goal = parseFloat(document.getElementById('goal').value) || 3.0;
@@ -180,8 +183,8 @@ function calcMain(saveToHistory = false) {
   const avg = data.cuts.reduce((sum, c) => sum + c.val, 0) / (data.cuts.length || 1);
 
   // Update metrics
-  document.getElementById('m-acc').textContent  = data.acc.toFixed(2);
-  document.getElementById('m-pct').textContent  = data.sumWeights.toFixed(0) + '%';
+  document.getElementById('m-acc').textContent = data.acc.toFixed(2);
+  document.getElementById('m-pct').textContent = data.sumWeights.toFixed(0) + '%';
   document.getElementById('m-goal').textContent = goal.toFixed(1);
 
   // Determine state
@@ -194,7 +197,7 @@ function calcMain(saveToHistory = false) {
   } else if (needed > 5) {
     displayVal = '> 5.0'; msg = `Imposible alcanzar ${goal.toFixed(1)} en el final.`; state = 'state-bad';
   } else {
-    displayVal = needed.toFixed(2); msg = `necesitas en el ${ (data.leftoverW*100).toFixed(0) }% restante.`; state = needed >= 4.0 ? 'state-warn' : 'state-ok';
+    displayVal = needed.toFixed(2); msg = `necesitas en el ${(data.leftoverW * 100).toFixed(0)}% restante.`; state = needed >= 4.0 ? 'state-warn' : 'state-ok';
   }
 
   document.getElementById('r-val').textContent = displayVal;
@@ -203,30 +206,36 @@ function calcMain(saveToHistory = false) {
   document.getElementById('result-section').classList.remove('hidden');
 
   // Render bars
-  const bars = data.cuts.map((c, i) => ({ label: `C${i+1}`, val: c.val }));
+  const bars = data.cuts.map((c, i) => ({ label: `C${i + 1}`, val: c.val }));
   bars.push({ label: 'Restante', val: Math.min(Math.max(needed, 0), 5), isResult: true, overflow: needed > 5, passed: needed <= 0 });
   renderBarsGeneric('bar-chart', bars);
 
   // Save to history logic
   if (saveToHistory) {
-    const subjectName = document.getElementById('subject-select').value;
-    const subjectData = subjects.find(s => s.name === subjectName) || { semester: 1, credits: 3 };
-    
+    const subjectName = document.getElementById('calc-subject').value.trim();
+    if (!subjectName) {
+      alert("⚠️ Digita un Nombre de Asignatura para guardar tu nota en el historial.");
+      return;
+    }
+    const subjectSem = parseInt(document.getElementById('calc-semester').value) || 1;
+    const subjectCreds = parseInt(document.getElementById('calc-credits').value) || 3;
+
     // Check if we need to update an existing record for this subject
     let finalDefinitive = data.acc + (needed > 0 && needed <= 5 ? needed * data.leftoverW : 0);
     if (data.leftoverW <= 0) finalDefinitive = data.acc;
 
     history.unshift({
       subject: subjectName,
-      semester: subjectData.semester,
-      credits: subjectData.credits,
+      semester: subjectSem,
+      credits: subjectCreds,
       cutsDetails: data.cuts,
       goal, needed, acc: data.acc,
       finalEstimated: finalDefinitive,
       ts: new Date().toISOString()
     });
-    if (history.length > 50) history.pop();
+    if (history.length > 100) history.pop();
     save();
+    updateSubjectSuggestions();
     renderHistory();
     updatePGA();
   }
@@ -272,7 +281,7 @@ function attachCutListeners() {
     });
   });
   const sg = document.getElementById('sg');
-  if(sg) sg.addEventListener('input', (e) => {
+  if (sg) sg.addEventListener('input', (e) => {
     document.getElementById('sgv').textContent = parseFloat(e.target.value).toFixed(1);
     simCalc();
   });
@@ -288,13 +297,13 @@ function simCalc() {
 
   let acc = 0, sumWeights = 0;
   const bars = [];
-  
+
   sliders.forEach((s, idx) => {
     const val = parseFloat(s.value);
     const weight = currentCuts[idx] ? currentCuts[idx].weight : 20;
     acc += val * (weight / 100);
     sumWeights += weight;
-    bars.push({ label: `C${idx+1}`, val });
+    bars.push({ label: `C${idx + 1}`, val });
   });
 
   const leftoverW = (100 - sumWeights) / 100;
@@ -308,7 +317,7 @@ function simCalc() {
     card.classList.add(acc >= sg ? 'state-ok' : 'state-bad');
     return;
   }
-  
+
   document.querySelector('#panel-sim .chart-wrap').classList.remove('hidden');
   const needed = (sg - acc) / leftoverW;
 
@@ -327,10 +336,17 @@ function simCalc() {
 
 
 // ===== HISTORY & PGA =====
+function getDefinitiveGrade(h) {
+  if (h.finalEstimated !== undefined) return Math.min(Math.max(h.finalEstimated, 0), 5.0);
+  let grade = h.acc;
+  const wSoFar = h.cutsDetails ? h.cutsDetails.reduce((s, c) => s + c.weight, 0) : 60;
+  if (h.needed > 0 && h.needed <= 5) grade = h.acc + h.needed * ((100 - wSoFar) / 100);
+  return Math.min(grade, 5.0);
+}
+
 function updatePGA() {
   if (history.length === 0) { document.getElementById('overall-pga').textContent = '0.00'; return; }
-  
-  // Agrupar la nota más reciente de cada materia
+
   const latestGrades = {};
   history.forEach(h => {
     if (!latestGrades[h.subject]) latestGrades[h.subject] = h;
@@ -339,11 +355,7 @@ function updatePGA() {
   let totalCredits = 0, totalPoints = 0;
   Object.values(latestGrades).forEach(h => {
     const creds = parseInt(h.credits) || 3;
-    // Si alcanzó meta asume que pasó, pero la nota la estimamos con el final real necesario o el cap de 5.0
-    let grade = h.acc;
-    if (h.needed > 0 && h.needed <= 5) grade = h.acc + h.needed * ((100 - h.cutsDetails.reduce((s,c)=>s+c.weight,0))/100);
-    // Si la pasó sobra, nota será el acumulado (podría ser más si saca nota en final pero estimamos el mínimo)
-    
+    let grade = getDefinitiveGrade(h);
     totalCredits += creds;
     totalPoints += grade * creds;
   });
@@ -354,28 +366,144 @@ function updatePGA() {
 
 function renderHistory() {
   const el = document.getElementById('history-list');
-  document.getElementById('history-count').textContent = `${history.length} registros`;
+
+  // Solo contamos materias únicas actuales
+  const latestGrades = {};
+  history.forEach(h => {
+    if (!latestGrades[h.subject]) latestGrades[h.subject] = h;
+  });
+
+  const uniqueCount = Object.keys(latestGrades).length;
+  document.getElementById('history-count').textContent = `${uniqueCount} Asignaturas`;
 
   if (history.length === 0) {
-    el.innerHTML = '<div class="hist-empty">Sin cálculos aún. Guarda una nota para empezar tu boletín.</div>';
+    el.innerHTML = '<div class="hist-empty">Sin cálculos aún. Guarda una nota para empezar tu malla curricular.</div>';
     return;
   }
 
-  el.innerHTML = history.map(h => {
-    const d = new Date(h.ts);
-    const dateStr = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour:'2-digit', minute:'2-digit' });
-    let badgeClass = h.needed > 5 ? 'badge-bad' : h.needed <= 0 ? 'badge-ok' : (h.needed > 4.0 ? 'badge-warn' : 'badge-ok');
-    let text = h.needed > 5 ? 'Peligro' : (h.needed <= 0 ? 'Pasada ya' : 'Necesita ' + h.needed.toFixed(1));
+  const bySem = {};
+  Object.values(latestGrades).forEach(h => {
+    const s = parseInt(h.semester) || 1;
+    if (!bySem[s]) bySem[s] = [];
+    bySem[s].push(h);
+  });
 
-    return `
-      <div class="hist-item">
-        <div class="hist-left">
-          <div class="hist-subject">${h.subject} <span style="font-size:10px; color:#94a3b8; font-weight:normal;">(Sem. ${h.semester} | ${h.credits} Cr)</span></div>
-          <div class="hist-detail">Acum: ${h.acc.toFixed(2)} &nbsp;·&nbsp; Meta: ${h.goal.toFixed(1)} &nbsp;·&nbsp; ${dateStr}</div>
+  const semKeys = Object.keys(bySem).map(Number).sort((a, b) => b - a); // Mostrar mayor primero
+
+  let html = '';
+  semKeys.forEach(s => {
+    const list = bySem[s];
+    let totalCreds = 0, totalPts = 0;
+    list.forEach(h => {
+      const c = parseInt(h.credits) || 3;
+      const grade = getDefinitiveGrade(h);
+      totalCreds += c;
+      totalPts += grade * c;
+    });
+    const semGPA = totalPts / totalCreds;
+
+    html += `<div class="sem-header">
+               <span>Semestre ${s}</span>
+               <span>Promedio: ${semGPA.toFixed(2)} (${totalCreds} Cr)</span>
+             </div>`;
+
+    html += list.map(h => {
+      const d = new Date(h.ts);
+      const dateStr = d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+      let badgeClass = h.needed > 5 ? 'badge-bad' : h.needed <= 0 ? 'badge-ok' : (h.needed > 4.0 ? 'badge-warn' : 'badge-ok');
+      let text = h.needed > 5 ? 'Peligro' : (h.needed <= 0 ? 'Pasada ya' : 'Necesita ' + h.needed.toFixed(1));
+
+      return `
+        <div class="hist-item">
+          <div class="hist-left">
+            <div class="hist-subject">${h.subject} <span style="font-size:10px; color:#94a3b8; font-weight:normal;">(${h.credits} Cr)</span></div>
+            <div class="hist-detail">Acum: ${h.acc.toFixed(2)} &nbsp;·&nbsp; Meta: ${h.goal.toFixed(1)} &nbsp;·&nbsp; ${dateStr}</div>
+          </div>
+          <span class="hist-badge ${badgeClass}">${text}</span>
+        </div>`;
+    }).join('');
+  });
+
+  el.innerHTML = html;
+}
+
+// ====== PGA SIMULATOR ======
+function initPGASimulator() {
+  const el = document.getElementById('pga-sim-list');
+  
+  if (history.length === 0) {
+    el.innerHTML = '<div class="hist-empty">Guarda calificaciones primero para proyectar tu PGA global.</div>';
+    document.getElementById('sim-overall-pga').textContent = '0.00';
+    return;
+  }
+  
+  pgaSimSliders = {};
+  
+  const latestGrades = {};
+  history.forEach(h => { if (!latestGrades[h.subject]) latestGrades[h.subject] = h; });
+  const uniqueActiveSubjects = Object.values(latestGrades);
+
+  const bySem = {};
+  uniqueActiveSubjects.forEach(sub => {
+    const s = parseInt(sub.semester) || 1;
+    if(!bySem[s]) bySem[s] = [];
+    bySem[s].push(sub);
+  });
+  
+  const semKeys = Object.keys(bySem).map(Number).sort((a,b)=>a-b); 
+  
+  let html = '';
+  semKeys.forEach(s => {
+    html += `<div class="field-label" style="margin-top:15px; margin-bottom: 4px;">Semestre ${s}</div>`;
+    bySem[s].forEach(h => {
+      let val = getDefinitiveGrade(h);
+      let isFixed = false;
+      
+      if (h.needed <= 0) {
+        isFixed = true; // Ya está super cerrada/pasada de sobra
+      }
+      
+      pgaSimSliders[h.subject] = { val, credits: h.credits, isFixed };
+      
+      const safeId = h.subject.replace(/\s+/g,'-').replace(/[^a-zA-Z0-9-]/g, '');
+      
+      html += `
+        <div class="sim-row">
+          <span class="sim-label" style="width:130px;" title="${h.subject}">${h.subject} <span class="pct">(${h.credits}Cr)</span></span>
+          ${isFixed 
+            ? `<div style="flex:1; height:6px; background:rgba(52, 211, 153, 0.4); border-radius:8px; display:flex; align-items:center;"><div style="width:100%; text-align:center; font-size:10px; color:#6ee7b7; font-weight:600; line-height:0; letter-spacing:1px;">CERRADA</div></div>`
+            : `<input type="range" class="pga-slider-input" data-sub="${h.subject}" min="0" max="5" step="0.1" value="${val}" style="height:6px;">`
+          }
+          <span class="sim-val" id="pga-sval-${safeId}">${val.toFixed(2)}</span>
         </div>
-        <span class="hist-badge ${badgeClass}">${text}</span>
-      </div>`;
-  }).join('');
+      `;
+    });
+  });
+  
+  el.innerHTML = html;
+
+  document.querySelectorAll('.pga-slider-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const subName = e.target.getAttribute('data-sub');
+      const safeId = subName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+      const val = parseFloat(e.target.value);
+      pgaSimSliders[subName].val = val;
+      document.getElementById('pga-sval-' + safeId).textContent = val.toFixed(2);
+      recalcSimPGA();
+    });
+  });
+
+  recalcSimPGA();
+}
+
+function recalcSimPGA() {
+  let totalCreds = 0, totalPts = 0;
+  Object.values(pgaSimSliders).forEach(s => {
+    totalCreds += s.credits;
+    totalPts += s.val * s.credits;
+  });
+  const pga = totalCreds > 0 ? (totalPts / totalCreds) : 0;
+  document.getElementById('sim-overall-pga').textContent = pga.toFixed(2);
 }
 
 document.getElementById('btn-clear-history').addEventListener('click', () => {
@@ -387,14 +515,14 @@ document.getElementById('btn-clear-history').addEventListener('click', () => {
 document.getElementById('btn-export-pdf').addEventListener('click', () => {
   // Add a class to body to format for printing
   document.body.classList.add('pdf-mode');
-  
+
   const element = document.getElementById('panel-history');
   const opt = {
-    margin:       1,
-    filename:     'Boletin_UniNota.pdf',
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, backgroundColor: '#ffffff' },
-    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    margin: 1,
+    filename: 'Boletin_UniNota.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
 
   html2pdf().set(opt).from(element).save().then(() => {
@@ -402,43 +530,6 @@ document.getElementById('btn-export-pdf').addEventListener('click', () => {
     document.body.classList.remove('pdf-mode');
   });
 });
-
-// ===== MODAL (NUEVA MATERIA) =====
-function openModal() {
-  document.getElementById('modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('new-subject').focus(), 50);
-}
-
-function closeModal() {
-  document.getElementById('modal').classList.add('hidden');
-  document.getElementById('new-subject').value = '';
-}
-
-function addSubject() {
-  const name = document.getElementById('new-subject').value.trim();
-  const semester = parseInt(document.getElementById('new-semester').value) || 1;
-  const credits = parseInt(document.getElementById('new-credits').value) || 3;
-  
-  if (!name) return;
-  
-  // Actualizar si ya existe, si no, crear nuevo
-  const existing = subjects.find(s => s.name === name);
-  if (existing) {
-    existing.semester = semester;
-    existing.credits = credits;
-  } else {
-    subjects.push({ name, semester, credits });
-  }
-  
-  save();
-  renderSubjects();
-  document.getElementById('subject-select').value = name;
-  closeModal();
-}
-
-document.getElementById('btn-add-subject').addEventListener('click', openModal);
-document.getElementById('btn-modal-cancel').addEventListener('click', closeModal);
-document.getElementById('btn-modal-confirm').addEventListener('click', addSubject);
 
 // ===== THEME TOGGLE =====
 const btnTheme = document.getElementById('btn-theme-toggle');
@@ -448,6 +539,7 @@ const iconSun = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" 
 const iconMoon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 
 function applyTheme() {
+  if(!btnTheme) return;
   if (isLight) {
     document.body.classList.add('light-theme');
     btnTheme.innerHTML = iconMoon;
@@ -457,15 +549,17 @@ function applyTheme() {
   }
 }
 
-btnTheme.addEventListener('click', () => {
-  isLight = !isLight;
-  localStorage.setItem('uninota-light-mode', isLight);
-  applyTheme();
-});
+if(btnTheme) {
+  btnTheme.addEventListener('click', () => {
+    isLight = !isLight;
+    localStorage.setItem('uninota-light-mode', isLight);
+    applyTheme();
+  });
+}
 
 // ===== INIT =====
 applyTheme();
-renderSubjects();
+updateSubjectSuggestions();
 renderDynamicCuts();
 renderHistory();
 updatePGA();

@@ -51,9 +51,10 @@
     </header>
 
     <nav class="tabs">
-      <button class="tab active" data-tab="calc">Calcular</button>
-      <button class="tab" data-tab="sim">Simulador</button>
-      <button class="tab" data-tab="history">Historial y PGA</button>
+        <button class="tab active" data-tab="calc">Calcular</button>
+        <button class="tab" data-tab="sim">Simular (Materia)</button>
+        <button class="tab" data-tab="history">Historial (Malla)</button>
+        <button class="tab" data-tab="pga">Proyectar PGA</button>
     </nav>
 
     <main class="content">
@@ -61,18 +62,38 @@
       <!-- PANEL CALCULAR -->
       <div id="panel-calc" class="panel active">
 
-        <div class="subject-bar">
-          <label class="field-label">Sistema de Evaluación</label>
+      <!-- AREA DE CABECERA Y METRICAS -->
+      <div class="configuracion">
+        <div class="config-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <h3>Evaluación y Asignatura</h3>
+        </div>
+
+        <div class="subject-bar" style="margin-bottom: 15px;">
+          <label class="field-label" style="margin-bottom: 6px;">Sistema de Evaluación</label>
           <select id="eval-mode-select">
             <option value="free">Opción 1: Modo Libre (Porcentajes Dinámicos)</option>
             <option value="udec">Opción 2: Modo UdeC (Sistema Oficial de la Universidad)</option>
           </select>
         </div>
 
-        <div class="subject-bar" style="margin-bottom: 2rem;">
-          <label class="field-label">Materia Activa</label>
-          <select id="subject-select"></select>
+        <div class="subject-bar" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 10px;">
+          <div>
+            <label class="field-label" style="color:var(--primary); font-weight:700;">Nombre de Asignatura</label>
+            <input type="text" id="calc-subject" placeholder="Ingresa la materia manualmente..." list="subject-suggestions" autocomplete="off">
+            <datalist id="subject-suggestions"></datalist>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <div style="flex:1;">
+              <label class="field-label">Semestre</label>
+              <input type="number" id="calc-semester" placeholder="1" value="1" min="1">
+            </div>
+            <div style="flex:1;">
+              <label class="field-label">Créditos</label>
+              <input type="number" id="calc-credits" placeholder="3" value="3" min="1">
+            </div>
+          </div>
         </div>
+      </div>
 
         <!-- MODO LIBRE -->
         <div id="mode-free">
@@ -238,36 +259,26 @@
         <div id="history-list" class="history-list"></div>
       </div>
 
+      <!-- PANEL PGA FUTURO -->
+      <div id="panel-pga" class="panel">
+        <div class="pga-card" style="justify-content: center; text-align: center; flex-direction: column;">
+          <div class="pga-label" style="font-size: 14px;">PGA Futuro Estimado (Carrera)</div>
+          <div class="pga-value" id="sim-overall-pga" style="font-size: 48px;">0.00</div>
+        </div>
+        
+        <div class="sim-intro">
+          Desliza para simular las notas finales de tus materias y observa el impacto sobre tu promedio acumulado total.
+        </div>
+
+        <div id="pga-sim-list" class="sim-sliders">
+          <!-- Insertado desde JS -->
+        </div>
+      </div>
+
     </main>
   </div>
 
-  <!-- MODAL NUEVA MATERIA -->
-  <div class="modal-overlay hidden" id="modal">
-    <div class="modal">
-      <h3 class="modal-title">Agregar nueva materia</h3>
-
-      <label class="field-label">Nombre de la Materia</label>
-      <input type="text" id="new-subject" class="modal-input" placeholder="Ej: Cálculo diferencial" maxlength="40">
-
-      <div class="modal-grid">
-        <div>
-          <label class="field-label">Semestre</label>
-          <input type="number" id="new-semester" class="modal-input" placeholder="Ej: 1" value="1" min="1">
-        </div>
-        <div>
-          <label class="field-label">Créditos</label>
-          <input type="number" id="new-credits" class="modal-input" placeholder="Ej: 3" value="3" min="1">
-        </div>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn-secondary" id="btn-modal-cancel">Cancelar</button>
-        <button class="btn-primary" id="btn-modal-confirm">Guardar</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="script.js?v=2"></script>
+  <script src="script.js?v=3"></script>
 </body>
 
 </html>

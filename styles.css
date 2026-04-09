@@ -175,6 +175,10 @@ input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; background: l
 .badge-bad { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
 .hist-empty { text-align: center; font-size: 14px; color: var(--text-muted); padding: 3rem 0; }
 
+/* ===== SEMESTER HEADERS ===== */
+.sem-header { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, rgba(79, 70, 229, 0.15), transparent); border-left: 4px solid #818cf8; padding: 10px 14px; border-radius: 4px; font-weight: 600; font-size: 14px; color: var(--text-main); margin: 1.5rem 0 0.8rem; }
+body.light-theme .sem-header { background: linear-gradient(90deg, rgba(79, 70, 229, 0.08), transparent); }
+
 /* ===== MODAL ===== */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; backdrop-filter: blur(8px); }
 .modal { background: rgba(15, 23, 42, 0.95); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 380px; box-shadow: var(--shadow-md); animation: fadeUp 0.3s ease; }
