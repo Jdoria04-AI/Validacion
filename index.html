@@ -50,12 +50,26 @@
       </div>
     </header>
 
-    <nav class="tabs">
-        <button class="tab active" data-tab="calc">Calcular</button>
-        <button class="tab" data-tab="sim">Simular (Materia)</button>
-        <button class="tab" data-tab="history">Historial (Malla)</button>
-        <button class="tab" data-tab="pga">Proyectar PGA</button>
-    </nav>
+    <div class="tabs-wrapper">
+      <button class="tabs-scroll-btn tabs-scroll-left hidden" id="tabs-prev" title="Anterior">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <nav class="tabs" id="tabs-container">
+          <button class="tab active" data-tab="calc">Calcular</button>
+          <button class="tab" data-tab="sim">Simular (Materia)</button>
+          <button class="tab" data-tab="history">Historial (Malla)</button>
+          <button class="tab" data-tab="pga">Proyectar PGA</button>
+          <button class="tab" data-tab="stats">Estadísticas</button>
+          <button class="tab" data-tab="compare">Comparativa</button>
+      </nav>
+      <button class="tabs-scroll-btn tabs-scroll-right hidden" id="tabs-next" title="Siguiente">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
 
     <main class="content">
 
@@ -275,10 +289,117 @@
         </div>
       </div>
 
+      <!-- PANEL ESTADÍSTICAS -->
+      <div id="panel-stats" class="panel">
+        <div class="stats-container">
+          <div class="stats-header">
+            <h3>Desempeño General</h3>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total de Materias</div>
+              <div class="stat-value" id="stats-total-subjects">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Promedio Global</div>
+              <div class="stat-value" id="stats-avg-grade">0.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Aprobadas</div>
+              <div class="stat-value" id="stats-passed">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">En Riesgo</div>
+              <div class="stat-value" id="stats-at-risk">0</div>
+            </div>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="chart-title">Distribución de Notas</div>
+            <div id="stats-grade-distribution" class="bar-chart"></div>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="chart-title">Desempeño por Semestre</div>
+            <div id="stats-semester-chart" class="bar-chart"></div>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="chart-title">Progreso de Créditos</div>
+            <div id="stats-credits-chart" class="bar-chart"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL COMPARATIVA -->
+      <div id="panel-compare" class="panel">
+        <div class="compare-container">
+          <div class="compare-header">
+            <h3>Comparativa de Materias</h3>
+            <p class="compare-subtitle">Analiza tu desempeño entre diferentes cursos</p>
+          </div>
+
+          <div class="compare-filters">
+            <select id="compare-semester-filter">
+              <option value="">Mostrar todas</option>
+              <option value="1">Semestre 1</option>
+              <option value="2">Semestre 2</option>
+              <option value="3">Semestre 3</option>
+              <option value="4">Semestre 4</option>
+              <option value="5">Semestre 5</option>
+              <option value="6">Semestre 6</option>
+              <option value="7">Semestre 7</option>
+              <option value="8">Semestre 8</option>
+              <option value="9">Semestre 9</option>
+              <option value="10">Semestre 10</option>
+            </select>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="chart-title">Notas Comparativas</div>
+            <div id="compare-subjects-chart" class="bar-chart"></div>
+          </div>
+
+          <div class="compare-list">
+            <div id="compare-list-content"></div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
-  <script src="script.js?v=3"></script>
+  <!-- MODAL AGREGAR MATERIA -->
+  <div id="modal-add-subject" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-title">Agregar Materia Rápido</div>
+      <div class="modal-input">
+        <label class="field-label">Nombre de la Materia</label>
+        <input type="text" id="modal-subject-name" placeholder="Ej: Cálculo Diferencial">
+      </div>
+      <div class="modal-grid">
+        <div>
+          <label class="field-label">Semestre</label>
+          <input type="number" id="modal-subject-semester" placeholder="1" value="1" min="1" max="10">
+        </div>
+        <div>
+          <label class="field-label">Créditos</label>
+          <input type="number" id="modal-subject-credits" placeholder="3" value="3" min="1">
+        </div>
+      </div>
+      <div class="modal-input">
+        <label class="field-label">Nota (0-5)</label>
+        <input type="number" id="modal-subject-grade" placeholder="3.5" min="0" max="5" step="0.1">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="modal-cancel-btn">Cancelar</button>
+        <button class="btn-primary" id="modal-save-btn">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=5"></script>
 </body>
 
 </html>

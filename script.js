@@ -34,6 +34,65 @@ if(inpSubject) {
   });
 }
 
+// ===== TABS SCROLL NAVIGATION =====
+const tabsContainer = document.getElementById('tabs-container');
+const tabsPrevBtn = document.getElementById('tabs-prev');
+const tabsNextBtn = document.getElementById('tabs-next');
+
+function updateTabsScrollButtons() {
+  const hasOverflow = tabsContainer.scrollWidth > tabsContainer.clientWidth + 2;
+  const scrollLeft = tabsContainer.scrollLeft;
+  const scrollRight = tabsContainer.scrollWidth - tabsContainer.clientWidth - scrollLeft;
+  const threshold = 2;
+  
+  // Mostrar/ocultar botones según overflow
+  if (hasOverflow) {
+    tabsPrevBtn.classList.toggle('hidden', scrollLeft <= threshold);
+    tabsNextBtn.classList.toggle('hidden', scrollRight <= threshold);
+  } else {
+    tabsPrevBtn.classList.add('hidden');
+    tabsNextBtn.classList.add('hidden');
+  }
+}
+
+function scrollTabs(direction) {
+  const amount = 150; // Píxeles a desplazar
+  if (direction === 'left') {
+    tabsContainer.scrollLeft -= amount;
+  } else {
+    tabsContainer.scrollLeft += amount;
+  }
+  // Actualizar visibilidad de botones después del scroll
+  setTimeout(updateTabsScrollButtons, 50);
+}
+
+// Event listeners para botones de navegación
+tabsPrevBtn.addEventListener('click', () => scrollTabs('left'));
+tabsNextBtn.addEventListener('click', () => scrollTabs('right'));
+
+// Event listener para detectar cambios en el scroll
+tabsContainer.addEventListener('scroll', updateTabsScrollButtons);
+
+// Event listener para detectar cambios en el tamaño de la ventana
+window.addEventListener('resize', updateTabsScrollButtons);
+
+// Verificar overflow al cargar la página
+window.addEventListener('load', () => {
+  // Múltiples intentos con diferentes delays para asegurar que se ejecute
+  updateTabsScrollButtons();
+  setTimeout(updateTabsScrollButtons, 50);
+  setTimeout(updateTabsScrollButtons, 150);
+  setTimeout(updateTabsScrollButtons, 500);
+});
+
+// También ejecutar con DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(updateTabsScrollButtons, 100);
+});
+
+// Ejecutar al final del script
+updateTabsScrollButtons();
+
 // ===== TABS =====
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -43,6 +102,14 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'history') updatePGA();
     if (tab.dataset.tab === 'pga') initPGASimulator();
+    if (tab.dataset.tab === 'stats') renderStats();
+    if (tab.dataset.tab === 'compare') renderComparative();
+    
+    // Scroll automático para mantener el tab activo visible
+    setTimeout(() => {
+      tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      updateTabsScrollButtons();
+    }, 50);
   });
 });
 
@@ -238,6 +305,8 @@ function calcMain(saveToHistory = false) {
     updateSubjectSuggestions();
     renderHistory();
     updatePGA();
+    renderStats();
+    renderComparative();
   }
 }
 
@@ -511,6 +580,235 @@ document.getElementById('btn-clear-history').addEventListener('click', () => {
   if (confirm('¿Borrar TODO el historial? (Esto afectará tu PGA)')) { history = []; save(); renderHistory(); updatePGA(); }
 });
 
+// ===== MODAL AGREGAR MATERIA =====
+const modalAddSubject = document.getElementById('modal-add-subject');
+const btnAddSubject = document.getElementById('btn-add-subject');
+const btnModalCancel = document.getElementById('modal-cancel-btn');
+const btnModalSave = document.getElementById('modal-save-btn');
+
+if(btnAddSubject) {
+  btnAddSubject.addEventListener('click', () => {
+    document.getElementById('modal-subject-name').value = '';
+    document.getElementById('modal-subject-semester').value = '1';
+    document.getElementById('modal-subject-credits').value = '3';
+    document.getElementById('modal-subject-grade').value = '';
+    modalAddSubject.classList.remove('hidden');
+    document.getElementById('modal-subject-name').focus();
+  });
+}
+
+if(btnModalCancel) {
+  btnModalCancel.addEventListener('click', () => {
+    modalAddSubject.classList.add('hidden');
+  });
+}
+
+if(btnModalSave) {
+  btnModalSave.addEventListener('click', () => {
+    const name = document.getElementById('modal-subject-name').value.trim();
+    const sem = parseInt(document.getElementById('modal-subject-semester').value) || 1;
+    const credits = parseInt(document.getElementById('modal-subject-credits').value) || 3;
+    const grade = parseFloat(document.getElementById('modal-subject-grade').value);
+
+    if (!name) { alert('⚠️ Ingresa el nombre de la materia'); return; }
+    if (isNaN(grade) || grade < 0 || grade > 5) { alert('⚠️ Ingresa una nota válida (0-5)'); return; }
+
+    history.unshift({
+      subject: name,
+      semester: sem,
+      credits: credits,
+      cutsDetails: [{ val: grade, weight: 100 }],
+      goal: 3.0,
+      needed: 0,
+      acc: grade,
+      finalEstimated: grade,
+      ts: new Date().toISOString()
+    });
+    save();
+    updateSubjectSuggestions();
+    renderHistory();
+    updatePGA();
+    renderStats();
+    renderComparative();
+    modalAddSubject.classList.add('hidden');
+  });
+}
+
+// Cerrar modal cuando se hace clic fuera
+modalAddSubject.addEventListener('click', (e) => {
+  if (e.target === modalAddSubject) {
+    modalAddSubject.classList.add('hidden');
+  }
+});
+
+// ===== ESTADÍSTICAS =====
+function renderStats() {
+  if (history.length === 0) {
+    document.getElementById('stats-total-subjects').textContent = '0';
+    document.getElementById('stats-avg-grade').textContent = '0.00';
+    document.getElementById('stats-passed').textContent = '0';
+    document.getElementById('stats-at-risk').textContent = '0';
+    document.getElementById('stats-grade-distribution').innerHTML = '<div class="hist-empty">Sin datos</div>';
+    document.getElementById('stats-semester-chart').innerHTML = '<div class="hist-empty">Sin datos</div>';
+    document.getElementById('stats-credits-chart').innerHTML = '<div class="hist-empty">Sin datos</div>';
+    return;
+  }
+
+  const latestGrades = {};
+  history.forEach(h => {
+    if (!latestGrades[h.subject]) latestGrades[h.subject] = h;
+  });
+
+  const uniqueSubjects = Object.values(latestGrades);
+  let totalCredits = 0, totalPoints = 0, passed = 0, atRisk = 0;
+  const grades = [];
+
+  uniqueSubjects.forEach(h => {
+    const grade = getDefinitiveGrade(h);
+    const credits = parseInt(h.credits) || 3;
+    grades.push(grade);
+    totalCredits += credits;
+    totalPoints += grade * credits;
+    if (grade >= 3.0) passed++;
+    if (grade >= 2.0 && grade < 3.0) atRisk++;
+  });
+
+  const avgGrade = totalCredits > 0 ? (totalPoints / totalCredits) : 0;
+
+  document.getElementById('stats-total-subjects').textContent = uniqueSubjects.length;
+  document.getElementById('stats-avg-grade').textContent = avgGrade.toFixed(2);
+  document.getElementById('stats-passed').textContent = passed;
+  document.getElementById('stats-at-risk').textContent = atRisk;
+
+  // Gráfico de distribución de notas
+  const rangos = [
+    { label: '0.0-2.0', min: 0, max: 2, color: '#f87171' },
+    { label: '2.0-3.0', min: 2, max: 3, color: '#fbbf24' },
+    { label: '3.0-4.0', min: 3, max: 4, color: '#60a5fa' },
+    { label: '4.0-5.0', min: 4, max: 5, color: '#34d399' }
+  ];
+
+  const distribution = rangos.map(r => ({
+    label: r.label,
+    count: grades.filter(g => g >= r.min && g <= r.max).length,
+    color: r.color
+  }));
+
+  const maxCount = Math.max(...distribution.map(d => d.count)) || 1;
+  const barsDist = distribution.map(d => ({
+    label: d.label,
+    val: (d.count / maxCount) * 5,
+    color: d.color,
+    customColor: d.color
+  }));
+
+  renderBarsCustom('stats-grade-distribution', barsDist);
+
+  // Gráfico por semestre
+  const bySem = {};
+  uniqueSubjects.forEach(h => {
+    const s = parseInt(h.semester) || 1;
+    if(!bySem[s]) bySem[s] = [];
+    bySem[s].push(h);
+  });
+
+  const semKeys = Object.keys(bySem).map(Number).sort((a,b)=>a-b);
+  const barsSem = semKeys.map(s => {
+    const subjects = bySem[s];
+    let pts = 0, creds = 0;
+    subjects.forEach(h => {
+      const c = parseInt(h.credits) || 3;
+      const g = getDefinitiveGrade(h);
+      pts += g * c;
+      creds += c;
+    });
+    return {
+      label: `S${s}`,
+      val: creds > 0 ? (pts / creds) : 0
+    };
+  });
+
+  renderBarsGeneric('stats-semester-chart', barsSem);
+
+  // Gráfico de créditos por semestre
+  const barsCredits = semKeys.map(s => ({
+    label: `S${s}`,
+    val: (bySem[s].reduce((sum, h) => sum + (parseInt(h.credits) || 3), 0) / 10) // Normalizar a escala 0-5
+  }));
+
+  renderBarsGeneric('stats-credits-chart', barsCredits);
+}
+
+function renderBarsCustom(containerId, bars) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = bars.map(b => {
+    const pct = (b.val / 5 * 100).toFixed(1);
+    const color = b.customColor || '#34d399';
+    return `
+      <div class="bar-row">
+        <span class="bar-label">${b.label}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${pct}%;background:${color};"></div>
+        </div>
+        <span class="bar-num">${b.val ? b.val.toFixed(1) : '0'}</span>
+      </div>`;
+  }).join('');
+}
+
+// ===== COMPARATIVA =====
+function renderComparative() {
+  if (history.length === 0) {
+    document.getElementById('compare-subjects-chart').innerHTML = '<div class="hist-empty">Sin datos para comparar</div>';
+    document.getElementById('compare-list-content').innerHTML = '<div class="hist-empty">Guarda materias para compararlas</div>';
+    return;
+  }
+
+  const latestGrades = {};
+  history.forEach(h => {
+    if (!latestGrades[h.subject]) latestGrades[h.subject] = h;
+  });
+
+  const semFilter = document.getElementById('compare-semester-filter').value;
+  let filteredSubjects = Object.values(latestGrades);
+
+  if (semFilter) {
+    filteredSubjects = filteredSubjects.filter(h => parseInt(h.semester) === parseInt(semFilter));
+  }
+
+  // Gráfico comparativo
+  const barsCompare = filteredSubjects
+    .sort((a, b) => getDefinitiveGrade(b) - getDefinitiveGrade(a))
+    .slice(0, 10)
+    .map((h, idx) => ({
+      label: h.subject.substring(0, 12),
+      val: getDefinitiveGrade(h)
+    }));
+
+  renderBarsGeneric('compare-subjects-chart', barsCompare);
+
+  // Lista de materias
+  let html = '';
+  filteredSubjects
+    .sort((a, b) => getDefinitiveGrade(b) - getDefinitiveGrade(a))
+    .forEach(h => {
+      const grade = getDefinitiveGrade(h);
+      const badgeClass = grade >= 4.0 ? 'badge-ok' : grade >= 3.0 ? 'badge-warn' : 'badge-bad';
+      html += `
+        <div class="compare-item">
+          <div>
+            <div class="compare-name">${h.subject}</div>
+            <div class="compare-metadata">Sem. ${h.semester} • ${h.credits} Cr</div>
+          </div>
+          <span class="compare-grade" style="color: ${grade >= 4.0 ? '#34d399' : grade >= 3.0 ? '#fbbf24' : '#f87171'};">${grade.toFixed(2)}</span>
+        </div>
+      `;
+    });
+
+  document.getElementById('compare-list-content').innerHTML = html || '<div class="hist-empty">Sin materias en este semestre</div>';
+}
+
+document.getElementById('compare-semester-filter').addEventListener('change', renderComparative);
+
 // ===== PDF GENERATOR =====
 document.getElementById('btn-export-pdf').addEventListener('click', () => {
   // Add a class to body to format for printing
@@ -563,3 +861,5 @@ updateSubjectSuggestions();
 renderDynamicCuts();
 renderHistory();
 updatePGA();
+renderStats();
+renderComparative();
